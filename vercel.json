@@ -2,7 +2,7 @@
  "rewrites": [
   {
    "source": "/:path*",
-   "destination": "https://cdn.jsdelivr.net/gh/khny363-oss/zip-app@8f1cd489f76338200a49e06b7a10b4b613fc2c79/:path*"
+   "destination": "https://cdn.jsdelivr.net/gh/khny363-oss/zip-app@a2ccbe024bbd26b9b277cbe9ecb08ad909eccc35/:path*"
   }
  ],
  "headers": [
