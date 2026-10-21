@@ -8,3 +8,8 @@ Static web app (single page): design a garment on a 3D human fitted to your meas
 - `manifest.webmanifest`, icons — PWA / add to home screen
 
 No build step. Serve the folder as static files.
+
+## Deploy (Vercel project `mida-studio`)
+Only `index.html` and `vercel.json` are uploaded to Vercel. Every other file is served from this repo
+through jsDelivr, pinned to a commit in `vercel.json` (`@<commit>`). To ship a change: push, then
+redeploy `index.html` + `vercel.json` with the new commit hash.
