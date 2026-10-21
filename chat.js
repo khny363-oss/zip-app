@@ -32,7 +32,7 @@ const log=box.querySelector('#clog'),sug=box.querySelector('#csug'),inp=box.quer
 function say(text,who){const m=document.createElement('div');m.className='msg '+(who||'bot');
  if(who==='me')m.textContent=text;else m.innerHTML=text;log.appendChild(m);log.scrollTop=log.scrollHeight;}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const SUG=['חולצה שחורה מג׳ינס','שלושה חורים קטנים בכתף','שרוולים ארוכים וצווארון וי','איך מחברים את השרוול?','איך שמים שני בדים במכונה?','תפר זיגזג בצדדים','חוט צהוב בכל התפרים','חריץ למטה','גזרה רחבה וקצרה','בטל'];
+const SUG=['תזרקי את הבגד','חולצה שחורה מג׳ינס','שלושה חורים קטנים בכתף','שרוולים ארוכים וצווארון וי','איך מחברים את השרוול?','איך שמים שני בדים במכונה?','תפר זיגזג בצדדים','חוט צהוב בכל התפרים','חריץ למטה','גזרה רחבה וקצרה','בטל'];
 function renderSug(list){sug.innerHTML='';(list||SUG).forEach(s=>{const b=document.createElement('button');b.type='button';b.textContent=s;b.onclick=()=>send(s);sug.appendChild(b);});}
 let greeted=false;
 function open(){box.classList.add('on');if(!greeted){greeted=true;say('היי! אני העוזרת של זיפ ✂️\nכותבים לי מה בא לכם, ואני עושה את זה על הבגד, או מסבירה איך תופרים את זה באמת.\nאפשר לבחור חלק בלחיצה ואז לכתוב "פה".');renderSug();}setTimeout(()=>{if(innerWidth>900)inp.focus();},50);}
@@ -102,6 +102,9 @@ function handle(raw){const t=norm(raw);const done=[];let explain=null,regenNeede
 
  // help
  if(/^\s*(עזרה|help|מה אפשר|מה את יודעת|מה את יכולה|מה אפשר לעשות)\s*$/.test(t)||/מה את (יודעת|יכולה) לעשות/.test(t))return helpText();
+
+ // gravity drop
+ if(/כבידה|לזרוק|תזרוק|תזרקי|תזרקו|זריקה|להלביש|תלביש|תלבישי|תלבישו/.test(t)&&window.ZIP_CLOTH){ZIP_CLOTH.drop();return 'זורקת את הבגד 👕 תראו איך הוא נופל ומתיישב על הגוף. אפשר גם ללחוץ על "👕 זריקה" ליד הדמות.';}
 
  // undo / share / export / print
  if(W(t,'בטל|תבטל|תבטלי|תבטלו|אנדו|undo|ביטול')&&t.trim().split(' ').length<=4){if(!HIST.length)return 'אין עדיין מה לבטל.';document.getElementById('tUndo').click();return 'ביטלתי את הפעולה האחרונה על השולחן ↶';}
