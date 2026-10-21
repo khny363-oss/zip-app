@@ -18,6 +18,29 @@ function syncUI(){box.querySelectorAll('[data-av]').forEach(b=>b.classList.toggl
 box.querySelector('#avChips').onclick=e=>{const v=e.target.dataset.av;if(!v||v===mode)return;mode=v;try{localStorage.setItem('zip_avatar',v);}catch(_){}syncUI();
  if(mode==='human'&&!H)load();else buildAvatar();};
 
+/* ---------- look: hair colour + cut (saved per project) ---------- */
+const HAIR={red:{n:'אדום',lo:[70,14,6],mid:[160,52,22],hi:[235,128,70]},black:{n:'שחור',lo:[6,5,5],mid:[28,24,24],hi:[80,72,70]},brown:{n:'חום',orig:1},blonde:{n:'בלונד',lo:[90,62,30],mid:[196,156,96],hi:[250,226,170]}};
+const LOOK=()=>{if(!P.look)P.look={hair:'red',cut:'bob'};return P.look;};
+const lb=document.createElement('div');
+lb.innerHTML='<h3>שיער</h3><div class="chips" id="hairC">'+Object.entries(HAIR).map(([k,v])=>`<button class="chip" data-hc="${k}">${v.n}</button>`).join('')+'</div><div class="chips" id="hairS" style="margin-top:6px"><button class="chip" data-hs="bob">קארה</button><button class="chip" data-hs="long">ארוך</button></div>';
+box.appendChild(lb);
+function syncLook(){if(!P)return;const L=LOOK();lb.querySelectorAll('[data-hc]').forEach(b=>b.classList.toggle('on',b.dataset.hc===L.hair));lb.querySelectorAll('[data-hs]').forEach(b=>b.classList.toggle('on',b.dataset.hs===L.cut));lb.style.display=mode==='human'?'':'none';}
+lb.onclick=e=>{const c=e.target.dataset.hc,t=e.target.dataset.hs;if(!c&&!t)return;const L=LOOK();if(c)L.hair=c;if(t)L.cut=t;syncLook();dirty();if(c&&!t)applyHair();else buildAvatar();};
+const HT={};
+function hairTex(k){if(HT[k])return HT[k];const src=H.hairMap;if(HAIR[k].orig)return HT[k]=src;const img=src.image,c=document.createElement('canvas');c.width=img.width;c.height=img.height;const g=c.getContext('2d');g.drawImage(img,0,0);
+ const d=g.getImageData(0,0,c.width,c.height),a=d.data,{lo,mid,hi}=HAIR[k];
+ for(let i=0;i<a.length;i+=4){const l=Math.min(1,(a[i]*0.3+a[i+1]*0.59+a[i+2]*0.11)/255*2.4);const t=l<0.5?l*2:(l-0.5)*2,A=l<0.5?lo:mid,B=l<0.5?mid:hi;a[i]=A[0]+(B[0]-A[0])*t;a[i+1]=A[1]+(B[1]-A[1])*t;a[i+2]=A[2]+(B[2]-A[2])*t;}
+ g.putImageData(d,0,0);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.flipY=src.flipY;t.anisotropy=4;t.wrapS=src.wrapS;t.wrapT=src.wrapT;return HT[k]=t;}
+const HD={};
+function headTex(k){if(HD[k])return HD[k];const src=H.headMap;if(HAIR[k].orig)return HD[k]=src;const img=src.image,c=document.createElement('canvas');c.width=img.width;c.height=img.height;const g=c.getContext('2d');g.drawImage(img,0,0);
+ const d=g.getImageData(0,0,c.width,c.height),a=d.data,W=c.width,{lo,mid,hi}=HAIR[k];
+ for(let i=0,p=0;i<a.length;i+=4,p++){const u=(p%W)/W,v=Math.floor(p/W)/c.height;if((u<0.16&&v>0.58)||(u>0.19&&u<0.34&&v>0.84))continue;
+  const l0=(a[i]*0.3+a[i+1]*0.59+a[i+2]*0.11)/255,w=Math.max(0,Math.min(1,(0.40-l0)/0.10));if(!w)continue;
+  const l=Math.min(1,l0*2.4),t=l<0.5?l*2:(l-0.5)*2,A=l<0.5?lo:mid,B=l<0.5?mid:hi;
+  a[i]+=(A[0]+(B[0]-A[0])*t-a[i])*w;a[i+1]+=(A[1]+(B[1]-A[1])*t-a[i+1])*w;a[i+2]+=(A[2]+(B[2]-A[2])*t-a[i+2])*w;}
+ g.putImageData(d,0,0);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.flipY=src.flipY;t.anisotropy=4;t.wrapS=src.wrapS;t.wrapT=src.wrapT;return HD[k]=t;}
+function applyHair(){if(!H||!P)return;const k=LOOK().hair,m=H.hair.material;m.map=hairTex(k);m.needsUpdate=true;const hm=H.headMesh.material;hm.map=headTex(k);hm.needsUpdate=true;}
+
 /* ---------- load + prepare ---------- */
 function load(){if(loading||H||!THREE.GLTFLoader)return;loading=true;
  new THREE.GLTFLoader().load(URL_,g=>{loading=false;prep(g.scene);syncUI();if(mode==='human'&&GEO&&PC.front)buildAvatar();},undefined,e=>{loading=false;console.warn('human load failed',e);mode='mannequin';syncUI();});}
@@ -38,6 +61,10 @@ function prep(root){
   hair:meshes.find(m=>/opacity/.test(m.material.name)),body:meshes.find(m=>/body/.test(m.material.name)),
   lids:Object.values(bones).filter(b=>/EyeBlink(Top|Bottom)/.test(b.name)),eyes:[bones.Bip01_LEye,bones.Bip01_REye].filter(Boolean),head:bones.Bip01_Head};
  meshes.forEach(m=>{const mt=m.material;mt.envMapIntensity=0;if(m===H.hair){mt.side=THREE.FrontSide;mt.alphaTest=0.4;}});
+ H.hairMap=H.hair.material.map;H.headMesh=meshes.find(m=>/head/.test(m.material.name));H.headMap=H.headMesh.material.map;
+ {const img=H.headMap.image,c=document.createElement('canvas'),S=256;c.width=c.height=S;const g=c.getContext('2d');g.drawImage(img,0,0,S,S);const a=g.getImageData(0,0,S,S).data,uv=H.headMesh.geometry.attributes.uv,n=uv.count,hm=new Uint8Array(n);
+  for(let i=0;i<n;i++){const u=uv.getX(i),v=uv.getY(i);if((u<0.16&&v>0.58)||(u>0.19&&u<0.34&&v>0.84))continue;const x=Math.min(S-1,Math.max(0,Math.floor(u*S))),y=Math.min(S-1,Math.max(0,Math.floor(v*S))),q=(y*S+x)*4;
+   if((a[q]*0.3+a[q+1]*0.59+a[q+2]*0.11)/255<0.36)hm[i]=1;}H.headHairV=hm;}
 }
 
 /* ---------- garment rings: outer surface of front+back at each height ---------- */
@@ -72,7 +99,7 @@ function attach(){
  const side={};
  for(const L of['L','R']){const ua=H.bones[`Bip01_${L}_UpperArm`],fa=H.bones[`Bip01_${L}_Forearm`],ha=H.bones[`Bip01_${L}_Hand`];if(!ua||!fa||!ha)continue;
   const sx=Math.sign(loc(ua).x)||1,dir=new V3(sx*Math.sin(G.tilt),-Math.cos(G.tilt),0);aim(ua,fa,dir);aim(fa,ha,dir);
-  side[L==='L'?0:1]={sx,J:loc(ua)};}
+  const J=loc(ua),Hd=loc(ha);side[L==='L'?0:1]={sx,J,dir,len:Hd.clone().sub(J).dot(dir)};}
  avatar.updateMatrixWorld(true);
  // skinned positions (avatar space) + per-vertex linear map for pushing deltas back to bind pose
  const data=H.meshes.map(m=>{const g=m.geometry,pa=g.attributes.position,si=g.attributes.skinIndex,sw=g.attributes.skinWeight,n=pa.count;
@@ -101,7 +128,13 @@ function attach(){
    const wt=sst(0.74,0.84,y)*(1-sst(1.43,1.49,y))*(1-aw)*(1-hw);
    if(wt>0&&!isHair){const f=Math.max(0.72,Math.min(1.4,G.rAt(y)/at(RHs,y))),cz=at(CZs,y);x=x*(1+(f-1)*wt);z=cz+(z-cz)*(1+(f-1)*wt);}
    // 2) arms: move shoulder joint onto the sleeve axis
-   for(const k of[0,1]){const w=k?aR:aL,sd=side[k];if(!w||!sd)continue;const tx=sd.sx*G.shX-sd.J.x,ty=G.shY-sd.J.y,tz=-sd.J.z;x+=tx*w;y+=ty*w;z+=tz*w;}
+   for(const k of[0,1]){const w=k?aR:aL,sd=side[k];if(!w||!sd)continue;
+    // stretch the arm along its axis so the wrist lands where a real sleeve ends (0.33 x height)
+    const tgt=0.561,f=Math.max(0.9,Math.min(1.25,tgt/Math.max(0.3,sd.len))),hv=(x-sd.J.x)*sd.dir.x+(y-sd.J.y)*sd.dir.y+(z-sd.J.z)*sd.dir.z;
+    if(hv>0){const e=hv*(f-1)*w;x+=sd.dir.x*e;y+=sd.dir.y*e;z+=sd.dir.z*e;}
+    const tx=sd.sx*G.shX-sd.J.x,ty=G.shY-sd.J.y,tz=-sd.J.z;x+=tx*w;y+=ty*w;z+=tz*w;}
+   // hair cut: bob (קארה) ends at the jaw line
+   if((isHair||(m===H.headMesh&&(H.headHairV[i]||(y<1.5&&Math.hypot(x,z+0.045)>0.075))))&&LOOK().cut==='bob'){const cut=1.50;if(y<cut){const d=cut-y,hx=x,hz=z+0.02,r=Math.hypot(hx,hz)||1,grow=Math.min(0.025,d*0.12);y=cut-d*0.1;x+=hx/r*grow;z+=hz/r*grow;}}
    // 3) (legacy) keep the body inside the rigid garment shell; the cloth simulation now collides with the real body instead
    if(window.ZIP_RIGID&&y>yHem+0.002&&y<YN+0.01){const ph=Math.atan2(x,z),r=Math.hypot(x,z),Rg=ringR(R,y,ph);
     let nearJoint=false;if(aw>=0.5){const sd=side[aR>aL?1:0];if(sd){const sx=sd.sx,qx=x-sx*G.shX,qy=y-G.shY;nearJoint=(-qx*sx*st+qy*ct)>-0.025;}}
@@ -135,7 +168,7 @@ function attach(){
 
 /* ---------- hook into the studio ---------- */
 const orig=window.buildAvatar;
-window.buildAvatar=function(){orig();if(mode==='human'){if(H)attach();else load();}};
+window.buildAvatar=function(){orig();syncLook();if(mode==='human'){if(H){attach();applyHair();}else load();}};
 if(GEO&&PC.front&&mode==='human')load();
 syncUI();
 window.ZIP_HUMAN={get ready(){return !!H;},get mode(){return mode;},get surf(){return H&&mode==='human'&&H.root.parent?H.surf:null;}};

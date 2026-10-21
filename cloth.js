@@ -72,18 +72,22 @@ function step(s,P,Q,g,damp,inflate,kSeam,iters,pull){const act=s.act;
 
 function run(kind){cancel();if(!GEO||typeof avatar==='undefined')return;const s=collect();if(!s)return;SIM=s;
  const N=s.N,T=s.T,P=T.slice(),Q=new Float32Array(N*3);
- const dt=1/60,g=-9.8/GEO.s*dt*dt,drop=kind==='drop';
- if(drop){for(let i=0;i<N;i++){if(!s.A[i])continue;P[i*3]=T[i*3]*1.6;P[i*3+1]=T[i*3+1]+0.85;P[i*3+2]=T[i*3+2]*1.6;}if(navigator.vibrate)try{navigator.vibrate(12);}catch(e){}}
- else collide(s,P);
- Q.set(P);
- const total=drop?210:64;let n=0;const t0=performance.now();
- (function frame(){const per=drop?1:2;
-  for(let k=0;k<per&&n<total;k++,n++){
-   const inflate=drop?Math.max(1,1.6-Math.max(0,n-25)/70*0.6):1;
-   step(s,P,Q,g,0.975,inflate,drop?Math.min(1,n/60):1,drop?6:5,drop?Math.max(0,Math.min(0.15,(n-40)/80*0.15)):0.15);}
-  if(n>=total){for(let r=0;r<6;r++){solve(s,P,1,1);collide(s,P,null);}for(let r=0;r<4;r++)collide(s,P,null);}
-  write(s,P);
-  if(n<total)raf=requestAnimationFrame(frame);else{SIM=null;window.ZIP_CLOTH.lastMs=performance.now()-t0;}})();}
+ const dt=1/60,g=-9.8/GEO.s*dt*dt,t0=performance.now();
+ // physics settle: gravity + collisions + seams, held near the designed fit
+ function settle(steps,kick){collide(s,P);Q.set(P);if(kick)for(let q=0;q<s.act.length;q++){Q[s.act[q]*3+1]+=kick;}
+  let n=0;(function frame(){for(let k=0;k<2&&n<steps;k++,n++)step(s,P,Q,g,0.975,1,1,5,0.15);
+   if(n>=steps){for(let r=0;r<6;r++){solve(s,P,1,1);collide(s,P,null);}for(let r=0;r<4;r++)collide(s,P,null);}
+   write(s,P);if(n<steps)raf=requestAnimationFrame(frame);else{SIM=null;window.ZIP_CLOTH.lastMs=performance.now()-t0;}})();}
+ if(kind!=='drop'){settle(64,0);return;}
+ // drop: the garment is tossed from above, spins a little, opens up, lands and settles
+ if(navigator.vibrate)try{navigator.vibrate(12);}catch(e){}
+ const DUR=0.75,ys=new Float32Array(N);let ymin=1e9,ymax=-1e9;for(let i=0;i<N;i++){ymin=Math.min(ymin,T[i*3+1]);ymax=Math.max(ymax,T[i*3+1]);}
+ (function fly(){const t=Math.min(1,(performance.now()-t0)/1000/DUR),e=1-t*t;// falls with gravity-like ease
+  const lift=0.95*e,spin=0.9*e*e,sc=1+0.32*e*e,cs=Math.cos(spin),sn=Math.sin(spin);
+  for(let i=0;i<N;i++){const x=T[i*3],y=T[i*3+1],z=T[i*3+2],h=(y-ymin)/(ymax-ymin||1);
+   const fl=Math.sin(t*14+h*6+x*20)*0.025*e;// cloth flutter while falling
+   const xs=x*sc,zs=z*sc;P[i*3]=xs*cs+zs*sn;P[i*3+1]=y+lift+fl*(1-h);P[i*3+2]=-xs*sn+zs*cs+fl*0.5;}
+  write(s,P);if(t<1)raf=requestAnimationFrame(fly);else settle(70,0.012);})();}
 function cancel(){if(raf)cancelAnimationFrame(raf);raf=0;SIM=null;}
 
 const orig=window.buildAvatar;

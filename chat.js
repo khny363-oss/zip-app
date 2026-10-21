@@ -32,7 +32,7 @@ const log=box.querySelector('#clog'),sug=box.querySelector('#csug'),inp=box.quer
 function say(text,who){const m=document.createElement('div');m.className='msg '+(who||'bot');
  if(who==='me')m.textContent=text;else m.innerHTML=text;log.appendChild(m);log.scrollTop=log.scrollHeight;}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const SUG=['תזרקי את הבגד','חולצה שחורה מג׳ינס','שלושה חורים קטנים בכתף','שרוולים ארוכים וצווארון וי','איך מחברים את השרוול?','איך שמים שני בדים במכונה?','תפר זיגזג בצדדים','חוט צהוב בכל התפרים','חריץ למטה','גזרה רחבה וקצרה','בטל'];
+const SUG=['תזרקי את הבגד','כובע באקט שחור','פשמינה בצבע בז׳','חולצה שחורה מג׳ינס','שלושה חורים קטנים בכתף','שרוולים ארוכים וצווארון וי','איך מחברים את השרוול?','איך שמים שני בדים במכונה?','תפר זיגזג בצדדים','חוט צהוב בכל התפרים','חריץ למטה','גזרה רחבה וקצרה','בטל'];
 function renderSug(list){sug.innerHTML='';(list||SUG).forEach(s=>{const b=document.createElement('button');b.type='button';b.textContent=s;b.onclick=()=>send(s);sug.appendChild(b);});}
 let greeted=false;
 function open(){box.classList.add('on');if(!greeted){greeted=true;say('היי! אני העוזרת של זיפ ✂️\nכותבים לי מה בא לכם, ואני עושה את זה על הבגד, או מסבירה איך תופרים את זה באמת.\nאפשר לבחור חלק בלחיצה ואז לכתוב "פה".');renderSug();}setTimeout(()=>{if(innerWidth>900)inp.focus();},50);}
@@ -102,6 +102,14 @@ function handle(raw){const t=norm(raw);const done=[];let explain=null,regenNeede
 
  // help
  if(/^\s*(עזרה|help|מה אפשר|מה את יודעת|מה את יכולה|מה אפשר לעשות)\s*$/.test(t)||/מה את (יודעת|יכולה) לעשות/.test(t))return helpText();
+
+ // accessories
+ if(window.ZIP_ACC){const AK=[['hat',/כובע|באקט|מצחייה|ביני/],['bag',/תיק|פאוץ/],['bandana',/בנדנה/],['scarf',/מטפחת/],['pashmina',/פשמינה|צעיף/]];
+  for(const [k,re] of AK){if(!re.test(t))continue;const off=/בלי|תוריד|להוריד|תורידי|הסר/.test(t),patch={on:!off};const cc=colorIn(t);if(cc)patch.color=cc.hex;
+   for(const f in FABW)if(W(t,FABW[f]))patch.fab=f;if(/פסים|מפוספס/.test(t))patch.print='stripes';else if(/משבצות|משובץ/.test(t))patch.print='check';else if(/נקודות|מנוקד/.test(t))patch.print='dots';
+   if(k==='hat'){if(/מצחייה|קסקט/.test(t))patch.type='cap';else if(/גרב|ביני|צמר/.test(t))patch.type='beanie';else if(/באקט|דייג/.test(t))patch.type='bucket';}
+   if(k==='bag'&&/חזה|פאוץ|מותן/.test(t))patch.type='belt';
+   ZIP_ACC.set(k,patch);openTab('acc');const n=ZIP_ACC.items[k].n;return off?`הורדתי את ה${n}.`:`שמתי ${n}${cc?' '+cc.n:''} 👌 אפשר לשנות סגנון, בד וצבע בלשונית "אקססוריז".`;}}
 
  // gravity drop
  if(/כבידה|לזרוק|תזרוק|תזרקי|תזרקו|זריקה|להלביש|תלביש|תלבישי|תלבישו/.test(t)&&window.ZIP_CLOTH){ZIP_CLOTH.drop();return 'זורקת את הבגד 👕 תראו איך הוא נופל ומתיישב על הגוף. אפשר גם ללחוץ על "👕 זריקה" ליד הדמות.';}

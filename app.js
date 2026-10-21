@@ -113,7 +113,7 @@ function computeGeo(){
   const x=A*Math.sin(th),zc=Math.cos(th),k=Math.max(0.02,ss(0,7*s,v-vTop(u)));const z=Math.sign(zc)*Math.max(Bz*k*Math.abs(zc),skinZ(x,y)+0.008);return new V3(x,y,z);};
  const pieces={front:{edges:torso(ndF,pr.neck==='v'),order:ORDER_T,map:mapT(false),cut:1},back:{edges:torso(ndB,false),order:ORDER_T,map:mapT(true),cut:1}};
  const need=(Aof(1.075)+0.07-shX)/0.3;const tilt=Math.asin(clamp(need,0.12,0.5));
- if(pr.sleeve!=='none'){const W=0.31*B.chest+4+E*0.3,ch=Math.min(14*s,0.6*va),L={short:0.12,long:0.35}[pr.sleeve]*H,Wc=(pr.sleeve==='short'?0.92:0.6)*W;
+ if(pr.sleeve!=='none'){const W=0.31*B.chest+4+E*0.3,ch=Math.min(14*s,0.6*va),L={short:0.12,long:0.33}[pr.sleeve]*H,Wc=(pr.sleeve==='short'?0.92:0.6)*W;
   const cap=[];for(let i=0;i<=24;i++){const x=-W/2+W*i/24,c=Math.cos(Math.PI*x/W);cap.push([x,ch*(1-c*c)]);}
   const wid=v=>v<ch?W:W+(Wc-W)*(clamp(v,ch,L)-ch)/(L-ch);
   const mapS=sx=>(u,v)=>{const yl=0.015-v/100/s,wv=wid(clamp(v,0,L));const Rr=Math.max(wv/(2*Math.PI)/100/s,interp(ap,yl)+0.007);const th=sx*Math.PI/2+(sx*u)/(wv/2)*Math.PI;return new V3(Math.sin(th)*Rr,yl,Math.cos(th)*Rr);};
@@ -481,6 +481,7 @@ function exportData(){const pieces=Object.values(PC).map(pc=>{const ops=P.ops[pc
   holes_cm:ops.filter(o=>o.t==='hole').map(o=>({x:o.x,y:o.y,diameter:o.d})),
   slits_cm:ops.filter(o=>o.t==='cut').map(o=>o.pts),
   chalk_marks_cm:ops.filter(o=>o.t==='chalk').map(o=>o.pts),
+  prints_cm:ops.filter(o=>o.t==='paint'||o.t==='text'||o.t==='patch'),
   edges_cm:Object.fromEntries(pc.order.map(en=>[en,pc.edges[en].map(([u,v])=>[+u.toFixed(2),+v.toFixed(2)])]))};});
  const joins={shoulder:[['front','shoulderR','back','shoulderL'],['front','shoulderL','back','shoulderR']],side:[['front','sideR','back','sideL'],['front','sideL','back','sideR']],
   armhole:PC.sleeve?[['sleeve','cap','front+back','armholeR/armholeL']]:[],underarm:PC.sleeve?[['sleeve','sideR','sleeve','sideL']]:[]};
@@ -518,7 +519,7 @@ function importPattern(txt){const i=txt.indexOf('{'),j=txt.lastIndexOf('}');if(i
  if(src.fab)for(const k of['front','back','sleeve']){const f=src.fab[k];if(f&&FAB[f.fab])p.fab[k]={fab:f.fab,color:/^#[0-9a-f]{6}$/i.test(f.color)?f.color:'#e8e2d6',print:PRINTS[f.print]?f.print:'solid'};}
  if(src.seams)for(const k in p.seams){const s=src.seams[k];if(s&&STITCH[s.t])p.seams[k]={t:s.t,c:s.c==='match'||/^#[0-9a-f]{6}$/i.test(s.c)?s.c:'match'};}
  const okPt=a=>Array.isArray(a)&&a.length===2&&a.every(n=>typeof n==='number'&&isFinite(n));
- if(src.ops)for(const k of['front','back','sleeve']){const a=src.ops[k];if(!Array.isArray(a))continue;p.ops[k]=a.filter(o=>o&&((o.t==='hole'&&typeof o.x==='number'&&typeof o.y==='number'&&typeof o.d==='number')||((o.t==='cut'||o.t==='chalk')&&Array.isArray(o.pts)&&o.pts.length<5000&&o.pts.every(okPt)))).slice(0,500);}
+ if(src.ops)for(const k of['front','back','sleeve']){const a=src.ops[k];if(!Array.isArray(a))continue;p.ops[k]=a.filter(o=>o&&(o.c===undefined||/^#[0-9a-f]{6}$/i.test(o.c))&&((o.t==='hole'&&typeof o.x==='number'&&typeof o.y==='number'&&typeof o.d==='number')||((o.t==='cut'||o.t==='chalk'||o.t==='paint')&&Array.isArray(o.pts)&&o.pts.length<5000&&o.pts.every(okPt))||(o.t==='text'&&typeof o.x==='number'&&typeof o.y==='number'&&typeof o.txt==='string'&&o.txt.length<40)||(o.t==='patch'&&typeof o.x==='number'&&typeof o.y==='number'&&typeof o.shape==='string'))).slice(0,500);}
  else if(Array.isArray(d.pieces))d.pieces.forEach(pc=>{if(!p.ops[pc.id])return;(pc.holes_cm||[]).forEach(h=>{if(typeof h.x==='number')p.ops[pc.id].push({t:'hole',x:h.x,y:h.y,d:h.diameter||1});});(pc.slits_cm||[]).forEach(s=>{if(Array.isArray(s)&&s.every(okPt))p.ops[pc.id].push({t:'cut',pts:s});});(pc.chalk_marks_cm||[]).forEach(s=>{if(Array.isArray(s)&&s.every(okPt))p.ops[pc.id].push({t:'chalk',pts:s});});});
  return p;}
 $('#bExport').onclick=()=>openIO('export');$('#mkExport').onclick=()=>openIO('export');$('#bImport').onclick=()=>openIO('import');
