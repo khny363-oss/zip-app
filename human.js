@@ -102,16 +102,34 @@ function attach(){
    if(wt>0&&!isHair){const f=Math.max(0.72,Math.min(1.4,G.rAt(y)/at(RHs,y))),cz=at(CZs,y);x=x*(1+(f-1)*wt);z=cz+(z-cz)*(1+(f-1)*wt);}
    // 2) arms: move shoulder joint onto the sleeve axis
    for(const k of[0,1]){const w=k?aR:aL,sd=side[k];if(!w||!sd)continue;const tx=sd.sx*G.shX-sd.J.x,ty=G.shY-sd.J.y,tz=-sd.J.z;x+=tx*w;y+=ty*w;z+=tz*w;}
-   // 3) keep the body inside the garment / hair outside it
-   if(y>yHem+0.002&&y<YN+0.01){const ph=Math.atan2(x,z),r=Math.hypot(x,z),Rg=ringR(R,y,ph);
+   // 3) (legacy) keep the body inside the rigid garment shell; the cloth simulation now collides with the real body instead
+   if(window.ZIP_RIGID&&y>yHem+0.002&&y<YN+0.01){const ph=Math.atan2(x,z),r=Math.hypot(x,z),Rg=ringR(R,y,ph);
     let nearJoint=false;if(aw>=0.5){const sd=side[aR>aL?1:0];if(sd){const sx=sd.sx,qx=x-sx*G.shX,qy=y-G.shY;nearJoint=(-qx*sx*st+qy*ct)>-0.025;}}
     if(Rg>0&&!isHair&&hw<0.5&&(aw<0.5||nearJoint)&&r>Rg-0.006){const k=(Rg-0.006)/r;x*=k;z*=k;}}
-   if(sl&&aw>=0.5&&!isHair){const k=aR>aL?1:0,sd=side[k];if(sd){const sx=sd.sx,c=ct,sn=sx*st;let qx=x-sx*G.shX,qy=y-G.shY;const xl=qx*c+qy*sn,yl=-qx*sn+qy*c;
+   if(window.ZIP_RIGID&&sl&&aw>=0.5&&!isHair){const k=aR>aL?1:0,sd=side[k];if(sd){const sx=sd.sx,c=ct,sn=sx*st;let qx=x-sx*G.shX,qy=y-G.shY;const xl=qx*c+qy*sn,yl=-qx*sn+qy*c;
     if(yl<0.03&&yl>0.015-slL+0.004){const v=Math.max(0,Math.min(sl.L,(0.015-yl)*100*s)),pp=sl.mapS(sx)(0,v),Rs=Math.hypot(pp.x,pp.z),rr=Math.hypot(xl,z);
      if(rr>Rs-0.005){const kk=(Rs-0.005)/rr;const nx=xl*kk;z*=kk;x=nx*c-yl*sn+sx*G.shX;y=nx*sn+yl*c+G.shY;}}}}
+   P[i*3]=x;P[i*3+1]=y;P[i*3+2]=z;
    const dx=x-x0,dy=y-y0,dz=z-z0;if(dx||dy||dz){const e=F.subarray(i*9,i*9+9);
     arr[i*3]+=e[0]*dx+e[3]*dy+e[6]*dz;arr[i*3+1]+=e[1]*dx+e[4]*dy+e[7]*dz;arr[i*3+2]+=e[2]*dx+e[5]*dy+e[8]*dz;}}
   pa.needsUpdate=true;m.geometry.computeBoundingSphere();});
+ // collision surface for the cloth: dense samples on the posed body triangles (~1 cm) with smooth normals
+ const pts=[],nrm=[];
+ data.forEach(d=>{if(d.m===H.hair)return;const idx=d.m.geometry.index.array,P=d.P,N=new Float32Array(d.n*3);
+  for(let t=0;t<idx.length;t+=3){const a=idx[t]*3,b=idx[t+1]*3,c=idx[t+2]*3;const ux=P[b]-P[a],uy=P[b+1]-P[a+1],uz=P[b+2]-P[a+2],vx=P[c]-P[a],vy=P[c+1]-P[a+1],vz=P[c+2]-P[a+2];
+   const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;for(const q of[a,b,c]){N[q]+=nx;N[q+1]+=ny;N[q+2]+=nz;}}
+  // smooth across UV-seam duplicates
+  const grp=new Map();for(let i=0;i<d.n;i++){const k=Math.round(P[i*3]*3000)+','+Math.round(P[i*3+1]*3000)+','+Math.round(P[i*3+2]*3000);const g=grp.get(k);if(g)g.push(i);else grp.set(k,[i]);}
+  grp.forEach(g=>{let x=0,y=0,z=0;g.forEach(i=>{x+=N[i*3];y+=N[i*3+1];z+=N[i*3+2];});const l=Math.hypot(x,y,z)||1;g.forEach(i=>{N[i*3]=x/l;N[i*3+1]=y/l;N[i*3+2]=z/l;});});
+  for(let t=0;t<idx.length;t+=3){const ia=idx[t]*3,ib=idx[t+1]*3,ic=idx[t+2]*3;if(P[ia+1]<0.62&&P[ib+1]<0.62&&P[ic+1]<0.62)continue;
+   const e=Math.max(Math.hypot(P[ib]-P[ia],P[ib+1]-P[ia+1],P[ib+2]-P[ia+2]),Math.hypot(P[ic]-P[ia],P[ic+1]-P[ia+1],P[ic+2]-P[ia+2]),Math.hypot(P[ic]-P[ib],P[ic+1]-P[ib+1],P[ic+2]-P[ib+2]));
+   const k=Math.max(1,Math.ceil(e/0.011));
+   for(let i=0;i<=k;i++)for(let j=0;j<=k-i;j++){const u=i/k,v=j/k,w=1-u-v;if(i===0&&j===0&&t%3)continue;
+    for(let q=0;q<3;q++){pts.push(P[ia+q]*w+P[ib+q]*u+P[ic+q]*v);}
+    let nx=N[ia]*w+N[ib]*u+N[ic]*v,ny=N[ia+1]*w+N[ib+1]*u+N[ic+1]*v,nz=N[ia+2]*w+N[ib+2]*u+N[ic+2]*v;const l=Math.hypot(nx,ny,nz)||1;nrm.push(nx/l,ny/l,nz/l);}}});
+ const CS=0.025,cells=new Map(),ck=(ix,iy,iz)=>((ix+512)*1048576+(iy+512)*1024+(iz+512));
+ for(let i=0;i<pts.length/3;i++){const k=ck(Math.floor(pts[i*3]/CS),Math.floor(pts[i*3+1]/CS),Math.floor(pts[i*3+2]/CS));const c=cells.get(k);if(c)c.push(i);else cells.set(k,[i]);}
+ H.surf={P:new Float32Array(pts),N:new Float32Array(nrm),cells,CS,ck};
  H.rest.forEach((r,b)=>{if(H.lids.includes(b)||H.eyes.includes(b)||b===H.head)r.q0=b.quaternion.clone();});
  return true;}
 
@@ -120,7 +138,7 @@ const orig=window.buildAvatar;
 window.buildAvatar=function(){orig();if(mode==='human'){if(H)attach();else load();}};
 if(GEO&&PC.front&&mode==='human')load();
 syncUI();
-window.ZIP_HUMAN={get ready(){return !!H;},get mode(){return mode;}};
+window.ZIP_HUMAN={get ready(){return !!H;},get mode(){return mode;},get surf(){return H&&mode==='human'&&H.root.parent?H.surf:null;}};
 
 /* ---------- alive: blinking, eyes, head ---------- */
 let nextBlink=1.5,blinkT=-9,sac={t:0,x:0,y:0};
