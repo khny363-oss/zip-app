@@ -19,7 +19,7 @@ box.querySelector('#avChips').onclick=e=>{const v=e.target.dataset.av;if(!v||v==
  if(mode==='human'&&!H)load();else buildAvatar();};
 
 /* ---------- look: hair colour + cut (saved per project) ---------- */
-const HAIR={red:{n:'אדום',lo:[70,14,6],mid:[160,52,22],hi:[235,128,70]},black:{n:'שחור',lo:[6,5,5],mid:[28,24,24],hi:[80,72,70]},brown:{n:'חום',orig:1},blonde:{n:'בלונד',lo:[90,62,30],mid:[196,156,96],hi:[250,226,170]}};
+const HAIR={red:{n:'אדום',lo:[52,12,6],mid:[138,40,18],hi:[208,96,50]},black:{n:'שחור',lo:[6,5,5],mid:[28,24,24],hi:[80,72,70]},brown:{n:'חום',orig:1},blonde:{n:'בלונד',lo:[90,62,30],mid:[196,156,96],hi:[250,226,170]}};
 const LOOK=()=>{if(!P.look)P.look={hair:'red',cut:'bob'};return P.look;};
 const lb=document.createElement('div');
 lb.innerHTML='<h3>שיער</h3><div class="chips" id="hairC">'+Object.entries(HAIR).map(([k,v])=>`<button class="chip" data-hc="${k}">${v.n}</button>`).join('')+'</div><div class="chips" id="hairS" style="margin-top:6px"><button class="chip" data-hs="bob">קארה</button><button class="chip" data-hs="long">ארוך</button></div>';
@@ -100,6 +100,10 @@ function attach(){
  for(const L of['L','R']){const ua=H.bones[`Bip01_${L}_UpperArm`],fa=H.bones[`Bip01_${L}_Forearm`],ha=H.bones[`Bip01_${L}_Hand`];if(!ua||!fa||!ha)continue;
   const sx=Math.sign(loc(ua).x)||1,dir=new V3(sx*Math.sin(G.tilt),-Math.cos(G.tilt),0);aim(ua,fa,dir);aim(fa,ha,dir);
   const J=loc(ua),Hd=loc(ha);side[L==='L'?0:1]={sx,J,dir,len:Hd.clone().sub(J).dot(dir)};}
+ // natural details: relaxed fingers, a hint of a smile
+ Object.values(H.bones).forEach(b=>{if(/_Finger[1-4]\d?$/.test(b.name))b.rotateZ(0.22);else if(/_Finger0\d?$/.test(b.name))b.rotateZ(0.08);});
+ ['Bip01_LMouthCorner','Bip01_RMouthCorner'].forEach(k=>{if(H.bones[k])H.bones[k].position.x+=0.0055;});
+ ['Bip01_LCheek','Bip01_RCheek'].forEach(k=>{if(H.bones[k])H.bones[k].position.x+=0.002;});
  avatar.updateMatrixWorld(true);
  // skinned positions (avatar space) + per-vertex linear map for pushing deltas back to bind pose
  const data=H.meshes.map(m=>{const g=m.geometry,pa=g.attributes.position,si=g.attributes.skinIndex,sw=g.attributes.skinWeight,n=pa.count;
@@ -134,7 +138,7 @@ function attach(){
     if(hv>0){const e=hv*(f-1)*w;x+=sd.dir.x*e;y+=sd.dir.y*e;z+=sd.dir.z*e;}
     const tx=sd.sx*G.shX-sd.J.x,ty=G.shY-sd.J.y,tz=-sd.J.z;x+=tx*w;y+=ty*w;z+=tz*w;}
    // hair cut: bob (קארה) ends at the jaw line
-   if((isHair||(m===H.headMesh&&(H.headHairV[i]||(y<1.5&&Math.hypot(x,z+0.045)>0.075))))&&LOOK().cut==='bob'){const cut=1.50;if(y<cut){const d=cut-y,hx=x,hz=z+0.02,r=Math.hypot(hx,hz)||1,grow=Math.min(0.025,d*0.12);y=cut-d*0.1;x+=hx/r*grow;z+=hz/r*grow;}}
+   if((isHair||(m===H.headMesh&&(H.headHairV[i]||(y<1.5&&z<-0.01&&Math.hypot(x,z+0.045)>0.075))))&&LOOK().cut==='bob'){const cut=1.50;if(y<cut){const d=cut-y,hx=x,hz=z+0.02,r=Math.hypot(hx,hz)||1,grow=Math.min(0.025,d*0.12);y=cut-d*0.1;x+=hx/r*grow;z+=hz/r*grow;}}
    // 3) (legacy) keep the body inside the rigid garment shell; the cloth simulation now collides with the real body instead
    if(window.ZIP_RIGID&&y>yHem+0.002&&y<YN+0.01){const ph=Math.atan2(x,z),r=Math.hypot(x,z),Rg=ringR(R,y,ph);
     let nearJoint=false;if(aw>=0.5){const sd=side[aR>aL?1:0];if(sd){const sx=sd.sx,qx=x-sx*G.shX,qy=y-G.shY;nearJoint=(-qx*sx*st+qy*ct)>-0.025;}}
@@ -181,6 +185,7 @@ let nextBlink=1.5,blinkT=-9,sac={t:0,x:0,y:0};
  H.lids.forEach(b=>{const r=H.rest.get(b);if(!r.q0)return;b.quaternion.copy(r.q0);b.rotateZ((/Top/.test(b.name)?0.9:-0.25)*amt);});
  if(t>sac.t){sac={t:t+0.8+Math.random()*2.2,x:(Math.random()-0.5)*0.12,y:(Math.random()-0.5)*0.18};}
  H.eyes.forEach(b=>{const r=H.rest.get(b);if(!r.q0)return;b.quaternion.copy(r.q0);b.rotateY(sac.y);b.rotateZ(sac.x);});
+ avatar.rotation.y=0.014*Math.sin(t*0.37);avatar.position.y=0.0018*Math.sin(t*1.45);
  if(H.head){const r=H.rest.get(H.head);if(r.q0){H.head.quaternion.copy(r.q0);H.head.rotateX(0.025*Math.sin(t*0.45));H.head.rotateY(0.04*Math.sin(t*0.27));H.head.rotateZ(0.02*Math.sin(t*0.61+1));}}
 })();
 })();
