@@ -1,0 +1,19 @@
+{
+ "rewrites": [
+  {
+   "source": "/:path*",
+   "destination": "https://cdn.jsdelivr.net/gh/khny363-oss/zip-app@92c11987d3e748b81417b7ca094153e130dbe261/:path*"
+  }
+ ],
+ "headers": [
+  {
+   "source": "/manifest.webmanifest",
+   "headers": [
+    {
+     "key": "Content-Type",
+     "value": "application/manifest+json"
+    }
+   ]
+  }
+ ]
+}
